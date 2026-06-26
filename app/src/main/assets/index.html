@@ -1,0 +1,854 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prescription Maker Pro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Bengali:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root { --navy:#0a1628; --blue:#1a56db; --sky:#38bdf8; --text:#1e293b; }
+        * { box-sizing:border-box; }
+        body { font-family:'DM Sans','Noto Sans Bengali',sans-serif; background:#f0f4f9; color:var(--text); margin:0; }
+        ::-webkit-scrollbar{width:6px} ::-webkit-scrollbar-track{background:transparent} ::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:8px}
+        
+        #top-toolbar { position:sticky;top:0;z-index:50;background:linear-gradient(110deg,#0a1628 0%,#0d2140 30%,#1a3a6e 60%,#1a56db 100%);box-shadow:0 4px 24px rgba(10,22,40,.3);border-bottom:1px solid rgba(56,189,248,.18); }
+        .logo-badge { width:42px;height:42px;background:linear-gradient(135deg,#38bdf8 0%,#1a56db 100%);border-radius:12px;display:flex;align-items:center;justify-content:center;box-shadow:0 0 14px rgba(56,189,248,.4); flex-shrink:0; }
+        .app-title { font-size:1.25rem;font-weight:700;background:linear-gradient(90deg,#fff 0%,#93c5fd 60%,#38bdf8 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;white-space:nowrap; }
+        
+        .btn-toolbar { background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); color:white; border-radius:8px; padding:6px 12px; font-size:0.8rem; cursor:pointer; transition:all 0.2s; display:flex; align-items:center; gap:5px; white-space:nowrap; }
+        .btn-toolbar:hover { background:rgba(255,255,255,0.2); }
+        .btn-clear { background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.4);color:#fca5a5; }
+        .btn-clear:hover { background:rgba(239,68,68,.3);color:#fff; }
+        .btn-print { background:linear-gradient(135deg,#38bdf8 0%,#1a56db 100%);border:none;color:#fff;font-weight:700;box-shadow:0 0 16px rgba(56,189,248,.4); }
+        .btn-print:hover { transform:translateY(-1px);box-shadow:0 0 24px rgba(56,189,248,.6); }
+
+        .modal-overlay { position:fixed;inset:0;z-index:100;display:flex;align-items:center;justify-content:center;background:rgba(15,23,42,.6);backdrop-filter:blur(4px); }
+        .modal-enter { animation:modalIn .2s ease-out; }
+        @keyframes modalIn{from{opacity:0;transform:scale(.94) translateY(-8px)}to{opacity:1;transform:scale(1) translateY(0)}}
+        
+        /* Mobile bottom sheets */
+        @media (max-width: 768px) {
+            .mobile-bottom-sheet { align-items: flex-end !important; }
+            .mobile-bottom-sheet > div { border-radius: 20px 20px 0 0 !important; width: 100% !important; max-width: 100% !important; margin: 0 !important; animation: slideUp .3s ease-out; }
+            @keyframes slideUp { from{transform:translateY(100%)} to{transform:translateY(0)} }
+            .mobile-contents { display: contents; }
+        }
+
+        .inv-group { background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:10px 12px;margin-bottom:8px; }
+        .inv-tag { display:inline-flex;align-items:center;gap:6px;background:#ede9fe;border:1px solid #c4b5fd;border-radius:8px;padding:4px 10px;font-size:11px;color:#5b21b6;font-weight:500;margin:2px; }
+        .discount-badge { display:inline-flex;align-items:center;gap:4px;background:linear-gradient(135deg,#10b981,#059669);color:white;border-radius:8px;padding:3px 10px;font-size:11px;font-weight:700;cursor:pointer;border:none; }
+        
+        /* Print Styles */
+        @media print {
+            @page { size: A4 portrait; margin: 8mm; margin-top: 0; }
+            .no-print, #top-toolbar, button, input, select, textarea, .action-btn, .modal-overlay { display: none !important; }
+            body { background: white !important; padding: 0 !important; margin: 0 !important; color: black !important; font-size: 10pt !important; font-family: 'Noto Sans Bengali', sans-serif !important; }
+            
+            .print-container { box-shadow: none !important; border: none !important; width: 100% !important; max-width: 100% !important; margin: 0 !important; padding: 0 !important; }
+            
+            /* Print Header - Only if .print-full is on body */
+            .print-header { display: none; border-bottom: 2px solid #333; padding-bottom: 10px; margin-bottom: 10px; }
+            body.print-full .print-header { display: flex !important; justify-content: space-between; }
+            .print-header-col { width: 48%; }
+            .print-header-col.bn { text-align: left; }
+            .print-header-col.en { text-align: right; border-left: 1px solid #ccc; padding-left: 2%; }
+            .ph-name { font-size: 16pt; font-weight: bold; margin-bottom: 4px; color: #1a56db !important; }
+            .ph-deg, .ph-pos, .ph-hosp, .ph-bmdc, .ph-phone { font-size: 10pt; margin-bottom: 2px; }
+
+            /* Patient Info */
+            .patient-row { display: flex !important; justify-content: space-between !important; border-bottom: 1px solid #ccc !important; padding-bottom: 6px !important; margin-bottom: 12px !important; }
+            .patient-row > div { display: flex; gap: 4px; }
+            
+            /* Body Columns */
+            .print-body { display: flex !important; flex-direction: row !important; }
+            body:not(.print-full) .patient-row { display: none !important; }
+            .print-left-col { width: 30% !important; border-right: 1px solid #333 !important; padding-right: 10px !important; flex-shrink: 0 !important; }
+            .print-right-col { width: 70% !important; padding-left: 12px !important; }
+            
+            .print-text { display: block !important; white-space: pre-wrap; font-size: 10pt !important; margin-bottom: 10px; }
+            .print-section-title { display: block !important; font-size: 10pt !important; font-weight: bold !important; border-bottom: 1px solid #333 !important; margin-bottom: 4px !important; }
+            
+            .rx-symbol { font-size: 24pt !important; font-weight: bold !important; margin-bottom: 10px !important; line-height: 1 !important; }
+            
+            /* Medicine Rows Print */
+            .med-row-print { display: flex !important; align-items: baseline !important; margin-bottom: 6px !important; page-break-inside: avoid !important; }
+            .med-index { min-width: 20px !important; font-weight: bold !important; }
+            
+            /* Investigation Rows Print */
+            .inv-print-row { display: block !important; margin-bottom: 4px !important; }
+            
+            /* Print Footer - Only if .print-full is on body */
+            .print-footer { display: none; border-top: 1px solid #333; margin-top: 20px; padding-top: 10px; font-size: 9pt !important; }
+            body.print-full .print-footer { display: flex !important; justify-content: space-around; }
+            .chamber-box { text-align: center; width: 24%; }
+            .chamber-name { font-weight: bold; margin-bottom: 2px; }
+            
+            /* Hide screen elements */
+            .inv-group, #med-list > div.group { display: none !important; }
+        }
+    </style>
+    <style id="dynamic-print-style"></style>
+</head>
+<body>
+
+<!-- TOP TOOLBAR -->
+<div id="top-toolbar" class="no-print">
+    <div class="max-w-7xl mx-auto px-4 py-3 flex flex-wrap items-center gap-3 relative z-10">
+        <div class="flex items-center gap-3 mr-2">
+            <div class="logo-badge"><i class="fa-solid fa-prescription text-white text-lg"></i></div>
+            <div>
+                <div class="app-title">Prescription Maker Pro</div>
+            </div>
+        </div>
+        
+        <button onclick="openProfileUrl()" class="btn-toolbar"><i class="fa-solid fa-user-doctor"></i> My Profile</button>
+        <button onclick="window.open('https://doctorthikana.com/package-of-doctor-thikana/','_blank')" class="btn-toolbar text-amber-300 border-amber-300/30 hover:bg-amber-300/20"><i class="fa-solid fa-crown"></i> Offer</button>
+        <button onclick="openSettings()" class="btn-toolbar"><i class="fa-solid fa-gear"></i> Settings</button>
+        <button onclick="clearPrescription()" class="btn-toolbar btn-clear"><i class="fa-solid fa-trash-can"></i> Clear</button>
+        
+        <div class="flex-1"></div>
+        
+        <button onclick="printBody()" class="btn-toolbar bg-indigo-600 hover:bg-indigo-500 border-none font-bold"><i class="fa-solid fa-file-lines"></i> Body Only</button>
+        <button onclick="printFull()" class="btn-toolbar btn-print"><i class="fa-solid fa-print"></i> Print Full</button>
+    </div>
+</div>
+
+<!-- MAIN WORKSPACE -->
+<div class="max-w-6xl mx-auto mt-4 px-2 md:px-4 mb-10">
+    <div class="bg-white rounded-xl shadow-xl border border-slate-200 print-container overflow-visible p-6" style="min-height:850px">
+        
+        <!-- PRINT HEADER (Hidden on screen, shown in print if .print-full) -->
+        <div class="print-header hidden">
+            <div class="print-header-col bn" id="ph-bn">
+                <div class="ph-name" id="ph-name-bn">ডাঃ নাম</div>
+                <div class="ph-deg" id="ph-deg-bn">ডিগ্রী</div>
+                <div class="ph-pos" id="ph-pos-bn">পদবী</div>
+                <div class="ph-hosp" id="ph-hosp-bn">হাসপাতাল</div>
+                <div class="ph-bmdc">BMDC Reg: <span id="ph-bmdc"></span></div>
+            </div>
+            <div class="print-header-col en" id="ph-en">
+                <div class="ph-name" id="ph-name-en">Dr. Name</div>
+                <div class="ph-deg" id="ph-deg-en">Degree</div>
+                <div class="ph-pos" id="ph-pos-en">Position</div>
+                <div class="ph-hosp" id="ph-hosp-en">Hospital</div>
+                <div class="ph-phone">Phone: <span id="ph-phone"></span></div>
+            </div>
+        </div>
+
+        <!-- PATIENT INFO ROW -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6 border-b border-slate-200 pb-4 no-print">
+            <div>
+                <label class="block text-xs font-bold text-slate-500 mb-1">Patient Name</label>
+                <input type="text" id="pt-name" class="w-full border rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Name">
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-slate-500 mb-1">Age</label>
+                <input type="text" id="pt-age" class="w-full border rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Age">
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-slate-500 mb-1">Sex</label>
+                <select id="pt-sex" class="w-full border rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-white">
+                    <option>Male</option><option>Female</option><option>Other</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-slate-500 mb-1">Date</label>
+                <input type="date" id="pt-date" class="w-full border rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+            </div>
+        </div>
+        
+        <!-- PRINT PATIENT ROW -->
+        <div class="patient-row hidden text-sm font-bold w-full">
+            <div style="display:flex; flex:1; gap:4px; align-items:flex-end;">
+                <span style="white-space:nowrap;">নাম:</span>
+                <span id="pr-name" style="border-bottom:1px solid #333; flex:1;"></span>
+            </div>
+            <div style="display:flex; gap:4px; align-items:flex-end; margin: 0 15px;">
+                <span style="white-space:nowrap;">বয়স:</span>
+                <span id="pr-age" style="border-bottom:1px solid #333; width:60px; display:inline-block; text-align:center;"></span>
+            </div>
+            <div style="display:flex; gap:4px; align-items:flex-end; margin: 0 15px;">
+                <span style="white-space:nowrap;">লিঙ্গ:</span>
+                <span id="pr-sex" style="border-bottom:1px solid #333; width:80px; display:inline-block; text-align:center;"></span>
+            </div>
+            <div style="display:flex; gap:4px; align-items:flex-end; margin-left: 15px;">
+                <span style="white-space:nowrap;">তারিখ:</span>
+                <span id="pr-date" style="border-bottom:1px solid #333; width:100px; display:inline-block; text-align:center;"></span>
+            </div>
+        </div>
+
+        <!-- TWO COLUMNS -->
+        <div class="flex flex-col md:flex-row print-body">
+            
+            <!-- LEFT COLUMN: Clinical -->
+            <div class="w-full md:w-[30%] bg-slate-50/50 md:bg-transparent md:border-r border-slate-200 md:pr-6 mb-6 md:mb-0 print-left-col flex flex-col mobile-contents">
+                
+                <!-- Symptoms -->
+                <div class="mb-5 order-1">
+                    <h3 class="no-print text-xs font-bold text-slate-700 uppercase mb-2 flex items-center gap-1"><i class="fa-solid fa-head-side-cough text-blue-500"></i> C/C (Symptoms)</h3>
+                    <div class="print-section-title hidden">C/C (Symptoms)</div>
+                    <textarea id="input-symptoms" rows="2" class="no-print w-full p-2.5 border rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500" placeholder="e.g. Fever..."></textarea>
+                    <div id="print-symptoms" class="print-text hidden"></div>
+                </div>
+
+                <!-- Diagnosis -->
+                <div class="mb-5 order-2">
+                    <h3 class="no-print text-xs font-bold text-slate-700 uppercase mb-2 flex items-center gap-1"><i class="fa-solid fa-user-doctor text-emerald-500"></i> Diagnosis</h3>
+                    <div class="print-section-title hidden">Diagnosis</div>
+                    <textarea id="input-diagnosis" rows="2" class="no-print w-full p-2.5 border rounded-lg text-sm outline-none focus:ring-2 focus:ring-emerald-500" placeholder="e.g. Viral Fever"></textarea>
+                    <div id="print-diagnosis" class="print-text hidden font-semibold"></div>
+                </div>
+
+                <!-- Investigations -->
+                <div class="mb-5 order-4 md:order-3">
+                    <h3 class="no-print text-xs font-bold text-slate-700 uppercase mb-2 flex items-center gap-1"><i class="fa-solid fa-microscope text-purple-500"></i> Investigations</h3>
+                    <div class="print-section-title hidden">Investigations</div>
+                    
+                    <div class="relative no-print mb-2">
+                        <input type="text" id="inv-search" oninput="searchInv()" onclick="searchInv()" placeholder="Test খুঁজুন (CBC, HbA1c...)" class="w-full p-2 pl-8 border rounded-lg text-sm outline-none focus:ring-2 focus:ring-purple-500">
+                        <i class="fa-solid fa-magnifying-glass absolute left-3 top-3 text-slate-400 text-xs"></i>
+                        <div id="inv-dropdown" class="absolute z-50 w-full bg-white border border-slate-200 rounded-lg shadow-xl max-h-48 overflow-y-auto hidden mt-1"></div>
+                    </div>
+                    
+                    <button id="btn-bulk-disc" onclick="openBulkDiscountModal()" class="no-print hidden w-full mb-2 bg-purple-50 text-purple-700 border border-purple-200 rounded-lg py-1.5 text-xs font-bold hover:bg-purple-100">
+                        <i class="fa-solid fa-tags"></i> Apply Discount to All
+                    </button>
+                    
+                    <div id="inv-list"></div>
+                </div>
+
+                <!-- Advice -->
+                <div class="mb-5 order-5 md:order-4">
+                    <h3 class="no-print text-xs font-bold text-slate-700 uppercase mb-2 flex items-center gap-1"><i class="fa-solid fa-heart-pulse text-rose-500"></i> Advice</h3>
+                    <div class="print-section-title hidden">Advice / উপদেশ</div>
+                    <textarea id="input-advice" rows="3" class="no-print w-full p-2.5 border rounded-lg text-sm outline-none focus:ring-2 focus:ring-rose-500" placeholder="পরামর্শ লিখুন..."></textarea>
+                    <div id="print-advice" class="print-text hidden"></div>
+                </div>
+            </div>
+
+            <!-- RIGHT COLUMN: Rx -->
+            <div class="w-full md:w-[70%] md:pl-6 print-right-col relative order-3 md:order-5">
+                <div class="rx-symbol text-3xl font-serif font-bold text-slate-800 mb-4 border-b pb-1"><span>R<sub>x</sub></span></div>
+                
+                <!-- Rx Actions -->
+                <div class="no-print flex flex-wrap gap-2 mb-4">
+                    <div class="relative flex-1 min-w-[200px]">
+                        <input type="text" id="med-search" oninput="searchMedicine()" placeholder="Brand বা Generic নামে খুঁজুন..." class="w-full p-2.5 pl-8 border border-blue-200 bg-blue-50 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                        <i class="fa-solid fa-pills absolute left-3 top-3.5 text-blue-400 text-xs"></i>
+                        <div id="med-dropdown" class="absolute z-30 w-full bg-white border border-slate-200 rounded-lg shadow-xl max-h-60 overflow-y-auto hidden mt-1"></div>
+                    </div>
+                    <button onclick="openCustomMedModal()" class="bg-slate-800 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-slate-700"><i class="fa-solid fa-plus"></i> Custom</button>
+                    <button onclick="openLoadTemplateModal()" class="bg-indigo-600 text-white border border-indigo-600 px-3 py-2 rounded-lg text-sm font-bold hover:bg-indigo-700 flex items-center gap-1.5"><i class="fa-solid fa-layer-group"></i> Template Load করুন</button>
+                    <button onclick="openSaveTemplateModal()" class="bg-slate-100 text-slate-700 border border-slate-300 px-3 py-2 rounded-lg text-sm font-bold hover:bg-slate-200 flex items-center gap-1.5"><i class="fa-solid fa-bookmark"></i> এই Rx সেভ করুন</button>
+                </div>
+
+                <div id="med-list" class="space-y-3"></div>
+            </div>
+        </div>
+        
+        <!-- PRINT FOOTER (Hidden on screen, shown in print if .print-full) -->
+        <div class="print-footer hidden" id="print-footer">
+            <!-- Chambers injected here -->
+        </div>
+    </div>
+</div>
+
+<!-- ================= MODALS ================= -->
+
+<!-- 1. SETTINGS MODAL (Full Screen) -->
+<div id="settings-modal" class="modal-overlay hidden">
+    <div class="bg-white w-full h-full md:w-[800px] md:h-[90vh] md:rounded-2xl shadow-2xl flex flex-col modal-enter overflow-hidden">
+        <div class="bg-slate-800 text-white px-6 py-4 flex justify-between items-center flex-shrink-0">
+            <h2 class="text-lg font-bold"><i class="fa-solid fa-gear"></i> Settings</h2>
+            <button onclick="closeSettings()" class="hover:text-red-400"><i class="fa-solid fa-xmark text-xl"></i></button>
+        </div>
+        <div class="p-6 overflow-y-auto flex-1 bg-slate-50 space-y-6">
+            
+            <!-- Profile URL -->
+            <div class="bg-white p-5 rounded-xl border shadow-sm">
+                <h3 class="font-bold mb-3 border-b pb-2"><i class="fa-solid fa-link"></i> Profile URL</h3>
+                <input type="text" id="set-profile-url" class="w-full border rounded-lg p-2 text-sm" placeholder="https://doctorthikana.com/your-profile">
+                <button onclick="saveProfileUrl()" class="mt-2 bg-blue-600 text-white px-4 py-1.5 rounded-lg text-sm font-bold">Save URL</button>
+            </div>
+
+            <!-- Doctor Info -->
+            <div class="bg-white p-5 rounded-xl border shadow-sm">
+                <h3 class="font-bold mb-3 border-b pb-2"><i class="fa-solid fa-user-doctor"></i> Doctor Info (Header)</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div><label class="text-xs font-bold text-slate-500">Name (Bengali)</label><input type="text" id="set-name-bn" class="w-full border rounded p-2 text-sm"></div>
+                    <div><label class="text-xs font-bold text-slate-500">Name (English)</label><input type="text" id="set-name-en" class="w-full border rounded p-2 text-sm"></div>
+                    <div><label class="text-xs font-bold text-slate-500">Degree (Bengali)</label><input type="text" id="set-deg-bn" class="w-full border rounded p-2 text-sm"></div>
+                    <div><label class="text-xs font-bold text-slate-500">Degree (English)</label><input type="text" id="set-deg-en" class="w-full border rounded p-2 text-sm"></div>
+                    <div><label class="text-xs font-bold text-slate-500">Position (Bengali)</label><input type="text" id="set-pos-bn" class="w-full border rounded p-2 text-sm"></div>
+                    <div><label class="text-xs font-bold text-slate-500">Position (English)</label><input type="text" id="set-pos-en" class="w-full border rounded p-2 text-sm"></div>
+                    <div><label class="text-xs font-bold text-slate-500">Hospital (Bengali)</label><input type="text" id="set-hosp-bn" class="w-full border rounded p-2 text-sm"></div>
+                    <div><label class="text-xs font-bold text-slate-500">Hospital (English)</label><input type="text" id="set-hosp-en" class="w-full border rounded p-2 text-sm"></div>
+                    <div><label class="text-xs font-bold text-slate-500">BMDC Reg No</label><input type="text" id="set-bmdc" class="w-full border rounded p-2 text-sm"></div>
+                    <div><label class="text-xs font-bold text-slate-500">Phone</label><input type="text" id="set-phone" class="w-full border rounded p-2 text-sm"></div>
+                </div>
+                <button onclick="saveDoctorInfo()" class="mt-4 bg-blue-600 text-white px-4 py-1.5 rounded-lg text-sm font-bold">Save Doctor Info</button>
+            </div>
+
+            <!-- Chambers -->
+            <div class="bg-white p-5 rounded-xl border shadow-sm">
+                <div class="flex justify-between items-center border-b pb-2 mb-3">
+                    <h3 class="font-bold"><i class="fa-solid fa-building"></i> Chambers (Footer)</h3>
+                    <button onclick="addChamberField()" class="text-blue-600 text-sm font-bold hover:underline"><i class="fa-solid fa-plus"></i> Add Chamber</button>
+                </div>
+                <div id="chamber-list-settings" class="space-y-4"></div>
+                <button onclick="saveChambers()" class="mt-4 bg-blue-600 text-white px-4 py-1.5 rounded-lg text-sm font-bold">Save Chambers</button>
+            </div>
+            
+            <!-- Templates Management -->
+            <div class="bg-white p-5 rounded-xl border shadow-sm">
+                <h3 class="font-bold mb-3 border-b pb-2"><i class="fa-solid fa-list"></i> Medicine Templates</h3>
+                <div id="settings-template-list" class="space-y-2 text-sm"></div>
+                <p class="text-xs text-slate-500 mt-3">To add a template, add medicines to the Rx and click "Save Rx" on the main screen.</p>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<!-- 2. MEDICINE MODAL -->
+<div id="med-modal" class="modal-overlay hidden mobile-bottom-sheet">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl mx-auto modal-enter overflow-hidden flex flex-col max-h-[90vh]">
+        <div class="bg-blue-600 text-white px-5 py-3 flex justify-between items-center">
+            <h2 class="text-base font-bold">Medicine Dosage</h2>
+            <button onclick="closeMedModal()" class="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center hover:bg-white/30"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="p-5 overflow-y-auto">
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+                <div class="col-span-2 md:col-span-1"><label class="text-xs font-bold text-slate-500">Brand Name</label><input type="text" id="m-brand" class="w-full border rounded p-2 text-sm focus:border-blue-500 outline-none"></div>
+                <div class="col-span-2 md:col-span-1"><label class="text-xs font-bold text-slate-500">Generic</label><input type="text" id="m-generic" class="w-full border rounded p-2 text-sm outline-none"></div>
+                <div><label class="text-xs font-bold text-slate-500">Strength</label><input type="text" id="m-strength" class="w-full border rounded p-2 text-sm outline-none"></div>
+                <div><label class="text-xs font-bold text-slate-500">Form</label>
+                    <select id="m-form" class="w-full border rounded p-2 text-sm bg-white">
+                        <option>Tablet</option><option>Capsule</option><option>Syrup</option>
+                        <option>Suspension</option><option>Drop</option><option>Injection</option>
+                        <option>Cream</option><option>Ointment</option><option>Gel</option>
+                        <option>Inhaler</option><option>Nasal Spray</option><option>Suppository</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="mb-4">
+                <label class="text-xs font-bold text-slate-500 block mb-1">Quick Presets</label>
+                <div class="flex flex-wrap gap-2">
+                    <button onclick="applyPreset('১+০+১','খাবারের পরে',5,'দিন')" class="border rounded-lg px-3 py-1 text-xs font-bold hover:bg-emerald-500 hover:text-white transition">১+০+১ (৫ দিন)</button>
+                    <button onclick="applyPreset('১+১+১','খাবারের পরে',7,'দিন')" class="border rounded-lg px-3 py-1 text-xs font-bold hover:bg-emerald-500 hover:text-white transition">১+১+১ (৭ দিন)</button>
+                    <button onclick="applyPreset('০+০+১','খাবারের পরে',1,'মাস')" class="border rounded-lg px-3 py-1 text-xs font-bold hover:bg-emerald-500 hover:text-white transition">রাতে (১ মাস)</button>
+                    <button onclick="applyPreset('১+০+০','খালি পেটে',14,'দিন')" class="border rounded-lg px-3 py-1 text-xs font-bold hover:bg-emerald-500 hover:text-white transition">খালি পেটে (১৪ দিন)</button>
+                    <button onclick="applyPreset('প্রয়োজন অনুযায়ী','প্রয়োজন অনুযায়ী',0,'চলবে')" class="border rounded-lg px-3 py-1 text-xs font-bold hover:bg-emerald-500 hover:text-white transition">প্রয়োজনে</button>
+                </div>
+            </div>
+
+            <div class="mb-4 bg-slate-50 p-3 rounded-lg border">
+                <label class="text-sm font-bold text-slate-700 block mb-2">Dose Schedule</label>
+                <div class="grid grid-cols-4 gap-2">
+                    <div><label class="text-xs block text-center">সকাল</label><select id="m-morn" class="w-full border rounded p-1.5 text-center bg-white" onchange="updDose()"><option>০</option><option>০.৫</option><option selected>১</option><option>২</option></select></div>
+                    <div><label class="text-xs block text-center">দুপুর</label><select id="m-noon" class="w-full border rounded p-1.5 text-center bg-white" onchange="updDose()"><option selected>০</option><option>০.৫</option><option>১</option><option>২</option></select></div>
+                    <div><label class="text-xs block text-center">রাত</label><select id="m-ngt" class="w-full border rounded p-1.5 text-center bg-white" onchange="updDose()"><option>০</option><option>০.৫</option><option selected>১</option><option>২</option></select></div>
+                    <div><label class="text-xs block text-center text-blue-600">Custom Dose</label><input type="text" id="m-custom" class="w-full border-blue-300 border rounded p-1.5 text-center font-bold text-blue-700"></div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3 mb-4">
+                <div><label class="text-xs font-bold text-slate-500">Timing</label>
+                    <select id="m-timing" class="w-full border rounded p-2 text-sm bg-white">
+                        <option>খাবারের পরে</option><option>খাবারের আগে</option><option>খালি পেটে</option>
+                        <option>খাবারের ৩০ মিনিট আগে</option><option>প্রয়োজন অনুযায়ী</option>
+                    </select>
+                </div>
+                <div><label class="text-xs font-bold text-slate-500">Duration</label>
+                    <div class="flex gap-1">
+                        <input type="number" id="m-dur-val" value="5" min="1" class="w-16 border rounded p-2 text-sm text-center">
+                        <select id="m-dur-type" class="flex-1 border rounded p-2 text-sm bg-white">
+                            <option>দিন</option><option>সপ্তাহ</option><option>মাস</option><option>চলবে</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div><label class="text-xs font-bold text-slate-500">Special Instructions</label>
+                <textarea id="m-inst" rows="2" class="w-full border rounded p-2 text-sm outline-none" placeholder="e.g. প্রচুর পানি খাবেন"></textarea>
+            </div>
+        </div>
+        <div class="p-4 border-t flex justify-end gap-2 bg-slate-50">
+            <button onclick="closeMedModal()" class="px-4 py-2 rounded-lg text-sm font-bold text-slate-600">Cancel</button>
+            <button onclick="addMedicine()" class="px-4 py-2 rounded-lg text-sm font-bold bg-blue-600 text-white">Add to Rx</button>
+        </div>
+    </div>
+</div>
+
+<!-- 3. DISCOUNT MODAL -->
+<div id="discount-modal" class="modal-overlay hidden">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-xs mx-4 modal-enter p-5">
+        <h3 class="font-bold mb-3">Set Discount</h3>
+        <div class="flex gap-2 mb-4 justify-center">
+            <button onclick="document.getElementById('d-inp').value=10" class="border rounded px-2 py-1 text-sm">10%</button>
+            <button onclick="document.getElementById('d-inp').value=20" class="border rounded px-2 py-1 text-sm">20%</button>
+            <button onclick="document.getElementById('d-inp').value=25" class="border rounded px-2 py-1 text-sm">25%</button>
+            <button onclick="document.getElementById('d-inp').value=50" class="border rounded px-2 py-1 text-sm">50%</button>
+        </div>
+        <div class="flex items-center justify-center gap-2 mb-5">
+            <input type="number" id="d-inp" class="border-2 border-emerald-400 rounded-lg w-20 p-2 text-center text-xl font-bold outline-none" placeholder="0"> <span class="text-xl font-bold">%</span>
+        </div>
+        <div class="flex justify-end gap-2">
+            <button onclick="closeDiscModal()" class="px-3 py-1.5 rounded bg-slate-200 text-sm font-bold">Cancel</button>
+            <button onclick="applyDisc()" class="px-3 py-1.5 rounded bg-emerald-600 text-white text-sm font-bold">Apply</button>
+        </div>
+    </div>
+</div>
+
+<!-- 4. SAVE TEMPLATE MODAL -->
+<div id="save-temp-modal" class="modal-overlay hidden">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-sm mx-4 modal-enter p-5">
+        <h3 class="font-bold mb-3 text-lg"><i class="fa-solid fa-floppy-disk text-emerald-500"></i> Save Rx as Template</h3>
+        <p class="text-xs text-slate-500 mb-4">Saves all currently added medicines as a reusable template (Max 10).</p>
+        <input type="text" id="temp-name" class="w-full border-2 border-slate-300 rounded-lg p-2.5 outline-none focus:border-emerald-500 mb-5 font-bold" placeholder="Template Name (e.g. Fever Kit)">
+        <div class="flex justify-end gap-2">
+            <button onclick="closeSaveTemp()" class="px-4 py-2 rounded bg-slate-200 text-sm font-bold">Cancel</button>
+            <button onclick="saveTemplate()" class="px-4 py-2 rounded bg-emerald-600 text-white text-sm font-bold">Save Template</button>
+        </div>
+    </div>
+</div>
+
+<!-- 5. LOAD TEMPLATE MODAL -->
+<div id="load-temp-modal" class="modal-overlay hidden mobile-bottom-sheet">
+    <div class="bg-white rounded-t-2xl md:rounded-2xl shadow-2xl w-full max-w-md mx-auto modal-enter flex flex-col max-h-[80vh]">
+        <div class="p-4 border-b flex justify-between items-center bg-indigo-50">
+            <h3 class="font-bold text-indigo-800"><i class="fa-solid fa-folder-open"></i> Load Template</h3>
+            <button onclick="closeLoadTemp()" class="w-8 h-8 rounded-full bg-white flex items-center justify-center hover:bg-slate-200"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="p-4 overflow-y-auto flex-1" id="load-temp-list">
+            <!-- Templates here -->
+        </div>
+    </div>
+</div>
+
+<script>
+// --- UTILS ---
+function toBn(n){ return String(n).replace(/[0-9]/g,d=>'০১২৩৪৫৬৭৮৯'[d]); }
+function getBnDuration(v,t){ return t==='চলবে' ? 'চলবে' : toBn(v)+' '+t; }
+
+// --- DATABASES ---
+const dbInv = ["CBC","ESR","HbA1c","Lipid Profile","Fasting Blood Sugar (FBS)","Random Blood Sugar (RBS)","Serum Creatinine","Blood Urea","SGPT (ALT)","SGOT (AST)","TSH","FT3","FT4","ECG","ECHO","USG Whole Abdomen","USG Lower Abdomen","USG KUB","USG Pregnancy Profile","X-Ray Chest P/A View","MRI Brain","MRI Cervical Spine","CT Brain","CT Chest","Urine RME","Urine C/S","Stool R/E","HBsAg","Anti-HCV","Dengue NS1 Antigen","Widal Test","CRP","Serum Electrolytes","Calcium","Vitamin D3","Vitamin B12"];
+for(let i=1;i<=100;i++) dbInv.push("Test "+i); // Pad to 100+
+
+const medBrands = ["Napa","Ace","Sergel","Maxpro","Pantid","Ciprocin","Levox","Zithrin","Flagyl","Cefnil","Pregaba","Losatan","Amlodipine","Bisocor","Rosutin","Ecosprin","Alatrol","Fexo","Deslor","Omep","Seclo","Rabigut","Ranitid","Domidon","Moxacil","Azithrocin","Fixpro","Fluclox","Clonazepam","Rivotril","Sedil","Indever","Emistat","Fluconal","Betnovate","Losart","Bisoloc","Nitrocard","Plavix","Atova","Rovast","Fenatrol","Pantonix","Losectil","Helicon Kit","Dulcolax","Oral-Z","Moxilin","Cefotil","Floxacin","Intracef","Azimex","Azithromax","Perpen","Filfresh","Angilock","Amlotab","Betapro","Remipro","Lipitor"];
+const medGenerics = ["Paracetamol","Esomeprazole","Pantoprazole","Ciprofloxacin","Levofloxacin","Azithromycin","Metronidazole","Cefixime","Pregabalin","Losartan","Amlodipine","Bisoprolol","Rosuvastatin","Aspirin","Cetirizine","Fexofenadine","Desloratadine","Omeprazole","Rabeprazole","Ranitidine","Domperidone","Amoxicillin","Flucloxacillin","Clonazepam","Diazepam","Propranolol","Ondansetron","Fluconazole","Betamethasone","Nitroglycerine","Clopidogrel","Atorvastatin","Fenofibrate","Zinc Sulphate","Cefuroxime"];
+const medForms = ["Tablet","Capsule","Syrup","Suspension","Drop","Injection"];
+const dbMeds = [];
+for(let i=0;i<medBrands.length;i++){
+    dbMeds.push({
+        brand: medBrands[i],
+        generic: medGenerics[i%medGenerics.length],
+        strength: (i%2===0)?"500 mg":"20 mg",
+        form: medForms[i%medForms.length]
+    });
+}
+for(let i=0;i<40;i++) dbMeds.push({brand:"Brand"+i, generic:"Generic"+i, strength:"10mg", form:"Tablet"}); // Pad to 100+
+
+// --- STATE ---
+let invGroups = [];
+let rxMeds = [];
+let discIdx = null, isBulkDisc = false;
+let settings = { profileUrl: "https://doctorthikana.com/", doc:{}, chambers:[], templates:[] };
+
+// --- INIT ---
+window.onload = () => {
+    document.getElementById('pt-date').valueAsDate = new Date();
+    loadSettings();
+    renderInv();
+    renderMeds();
+};
+
+// --- SETTINGS & LOCALSTORAGE ---
+function loadSettings() {
+    settings.profileUrl = localStorage.getItem('rx_profile_url') || "https://doctorthikana.com/";
+    try { settings.doc = JSON.parse(localStorage.getItem('rx_doctor')) || {}; }catch(e){}
+    try { settings.chambers = JSON.parse(localStorage.getItem('rx_chambers')) || [{name:"Chamber 1", addr:"", time:""}]; }catch(e){}
+    try { settings.templates = JSON.parse(localStorage.getItem('rx_templates')) || []; }catch(e){}
+    
+    // Set inputs
+    document.getElementById('set-profile-url').value = settings.profileUrl;
+    ['bn','en'].forEach(l=>{
+        ['name','deg','pos','hosp'].forEach(f=>{
+            if(settings.doc[`${f}_${l}`]) document.getElementById(`set-${f}-${l}`).value = settings.doc[`${f}_${l}`];
+        });
+    });
+    if(settings.doc.bmdc) document.getElementById('set-bmdc').value = settings.doc.bmdc;
+    if(settings.doc.phone) document.getElementById('set-phone').value = settings.doc.phone;
+    
+    renderChamberSettings();
+    renderTemplateSettings();
+    updatePrintHeader();
+    updatePrintFooter();
+}
+
+function saveProfileUrl() {
+    settings.profileUrl = document.getElementById('set-profile-url').value;
+    localStorage.setItem('rx_profile_url', settings.profileUrl);
+    alert("URL Saved");
+}
+function openProfileUrl() { window.open(settings.profileUrl, '_blank'); }
+
+function saveDoctorInfo() {
+    const d = {};
+    ['bn','en'].forEach(l=>{
+        ['name','deg','pos','hosp'].forEach(f=>{
+            d[`${f}_${l}`] = document.getElementById(`set-${f}-${l}`).value;
+        });
+    });
+    d.bmdc = document.getElementById('set-bmdc').value;
+    d.phone = document.getElementById('set-phone').value;
+    settings.doc = d;
+    localStorage.setItem('rx_doctor', JSON.stringify(d));
+    updatePrintHeader();
+    alert("Doctor Info Saved");
+}
+
+function updatePrintHeader() {
+    const d = settings.doc;
+    ['bn','en'].forEach(l=>{
+        document.getElementById(`ph-name-${l}`).textContent = d[`name_${l}`] || (l==='bn'?'ডাঃ নাম':'Dr. Name');
+        document.getElementById(`ph-deg-${l}`).textContent = d[`deg_${l}`] || '';
+        document.getElementById(`ph-pos-${l}`).textContent = d[`pos_${l}`] || '';
+        document.getElementById(`ph-hosp-${l}`).textContent = d[`hosp_${l}`] || '';
+    });
+    document.getElementById('ph-bmdc').textContent = d.bmdc || '';
+    document.getElementById('ph-phone').textContent = d.phone || '';
+}
+
+function renderChamberSettings() {
+    const cl = document.getElementById('chamber-list-settings');
+    cl.innerHTML = '';
+    settings.chambers.forEach((c,i) => {
+        cl.innerHTML += `
+        <div class="border p-3 rounded-lg bg-slate-50 relative">
+            <h4 class="text-xs font-bold mb-2">Chamber ${i+1}</h4>
+            ${i>0 ? `<button onclick="removeChamber(${i})" class="absolute top-2 right-2 text-red-500"><i class="fa-solid fa-trash"></i></button>` : ''}
+            <input type="text" id="ch-name-${i}" value="${c.name||''}" placeholder="Name" class="w-full border rounded p-1.5 text-sm mb-2">
+            <input type="text" id="ch-addr-${i}" value="${c.address||''}" placeholder="Address" class="w-full border rounded p-1.5 text-sm mb-2">
+            <input type="text" id="ch-time-${i}" value="${c.time||''}" placeholder="Time" class="w-full border rounded p-1.5 text-sm mb-2">
+            <input type="text" id="ch-serial-${i}" value="${c.serial||''}" placeholder="Serial Number (e.g. 017...)" class="w-full border rounded p-1.5 text-sm">
+        </div>`;
+    });
+}
+
+function addChamberField() {
+    if(settings.chambers.length >= 4){ alert("Max 4 chambers allowed"); return; }
+    settings.chambers.push({name:"", address:"", time:"", serial:""});
+    renderChamberSettings();
+}
+function removeChamber(idx) {
+    settings.chambers.splice(idx,1);
+    renderChamberSettings();
+}
+function saveChambers() {
+    settings.chambers.forEach((c,i)=>{
+        c.name = document.getElementById(`ch-name-${i}`).value;
+        c.address = document.getElementById(`ch-addr-${i}`).value;
+        c.time = document.getElementById(`ch-time-${i}`).value;
+        c.serial = document.getElementById(`ch-serial-${i}`).value;
+    });
+    localStorage.setItem('rx_chambers', JSON.stringify(settings.chambers));
+    updatePrintFooter();
+    alert("Chambers Saved");
+}
+
+function updatePrintFooter() {
+    const pf = document.getElementById('print-footer');
+    pf.innerHTML = '';
+    settings.chambers.forEach(c => {
+        if(c.name || c.address) {
+            pf.innerHTML += `<div class="chamber-box">
+                <div class="chamber-name">${c.name}</div>
+                <div>${c.address}</div>
+                <div style="font-weight:bold; margin-top:2px">${c.time}</div>
+                ${c.serial ? `<div style="font-weight:bold; margin-top:2px; color:#1a56db;">সিরিয়াল: ${toBn(c.serial)}</div>` : ''}
+            </div>`;
+        }
+    });
+}
+
+function openSettings() { document.getElementById('settings-modal').classList.remove('hidden'); }
+function closeSettings() { document.getElementById('settings-modal').classList.add('hidden'); }
+
+// --- INVESTIGATIONS ---
+function searchInv() {
+    const q = document.getElementById('inv-search').value.toLowerCase();
+    const dd = document.getElementById('inv-dropdown');
+    dd.innerHTML = '';
+    const res = q ? dbInv.filter(i=>i.toLowerCase().includes(q)) : dbInv;
+    if(res.length){
+        dd.classList.remove('hidden');
+        res.slice(0,30).forEach(i=>{
+            const div = document.createElement('div');
+            div.className = 'p-2 hover:bg-purple-50 cursor-pointer text-sm font-medium';
+            div.innerHTML = `<i class="fa-solid fa-vial text-purple-400 mr-1"></i> ${i}`;
+            div.onclick = () => addInv(i);
+            dd.appendChild(div);
+        });
+    } else {
+        dd.classList.remove('hidden');
+        const div = document.createElement('div');
+        div.className = 'p-2 hover:bg-purple-50 cursor-pointer text-sm font-bold text-purple-600';
+        div.innerHTML = `<i class="fa-solid fa-plus mr-1"></i> Add: "${q}"`;
+        div.onclick = () => addInv(document.getElementById('inv-search').value);
+        dd.appendChild(div);
+    }
+}
+document.addEventListener('click', e => {
+    if(!e.target.closest('#inv-search') && !e.target.closest('#inv-dropdown')) document.getElementById('inv-dropdown').classList.add('hidden');
+    if(!e.target.closest('#med-search') && !e.target.closest('#med-dropdown')) document.getElementById('med-dropdown').classList.add('hidden');
+});
+
+function addInv(name) {
+    if(!name.trim() || invGroups.some(g=>g.name===name.trim())) return;
+    invGroups.push({name: name.trim(), discount: 0});
+    document.getElementById('inv-search').value = '';
+    document.getElementById('inv-dropdown').classList.add('hidden');
+    renderInv();
+}
+function removeInv(idx) { invGroups.splice(idx,1); renderInv(); }
+
+function renderInv() {
+    const list = document.getElementById('inv-list');
+    list.innerHTML = '';
+    document.getElementById('btn-bulk-disc').classList.toggle('hidden', invGroups.length < 2);
+    
+    invGroups.forEach((g,i)=>{
+        list.innerHTML += `
+        <div class="inv-group relative group">
+            <div class="flex flex-wrap items-center gap-2">
+                <span class="inv-tag"><i class="fa-solid fa-vial opacity-60"></i> ${g.name}
+                    <button onclick="removeInv(${i})" class="ml-1 hover:text-red-500"><i class="fa-solid fa-xmark"></i></button>
+                </span>
+                ${g.discount>0 ? `<button onclick="openDiscModal(${i})" class="discount-badge">${g.discount}% Off</button>` : ''}
+            </div>
+            <div class="mt-2 no-print">
+                <button onclick="openDiscModal(${i})" class="text-xs border border-emerald-300 text-emerald-700 bg-emerald-50 px-2 py-1 rounded font-bold hover:bg-emerald-100"><i class="fa-solid fa-tag"></i> ${g.discount>0?'Edit':'Set'} Discount</button>
+            </div>
+            <!-- Print specific element -->
+            <div class="inv-print-row hidden">${toBn(i+1)}. ${g.name} ${g.discount>0 ? `— ${g.discount}% Off` : ''}</div>
+        </div>`;
+    });
+}
+
+function openDiscModal(idx) { discIdx=idx; isBulkDisc=false; document.getElementById('d-inp').value = invGroups[idx].discount||''; document.getElementById('discount-modal').classList.remove('hidden'); }
+function openBulkDiscountModal() { isBulkDisc=true; document.getElementById('d-inp').value = ''; document.getElementById('discount-modal').classList.remove('hidden'); }
+function closeDiscModal() { document.getElementById('discount-modal').classList.add('hidden'); }
+function applyDisc() {
+    const val = parseInt(document.getElementById('d-inp').value)||0;
+    if(isBulkDisc) invGroups.forEach(g=>g.discount=val);
+    else if(discIdx!==null) invGroups[discIdx].discount=val;
+    closeDiscModal(); renderInv();
+}
+
+// --- MEDICINES ---
+function searchMedicine() {
+    const q = document.getElementById('med-search').value.toLowerCase();
+    const dd = document.getElementById('med-dropdown');
+    dd.innerHTML = '';
+    if(q.length<1) { dd.classList.add('hidden'); return; }
+    const res = dbMeds.filter(m=>m.brand.toLowerCase().includes(q) || m.generic.toLowerCase().includes(q));
+    if(res.length){
+        dd.classList.remove('hidden');
+        res.slice(0,30).forEach(m=>{
+            const div = document.createElement('div');
+            div.className = 'p-3 hover:bg-blue-50 cursor-pointer border-b border-slate-50 flex justify-between items-center';
+            div.innerHTML = `<div><div class="font-bold text-sm">${m.brand} ${m.strength}</div><div class="text-xs text-slate-500">${m.generic} &bull; ${m.form}</div></div> <i class="fa-solid fa-plus bg-blue-100 text-blue-600 p-1.5 rounded-full text-xs"></i>`;
+            div.onclick = () => openCustomMedModal(m);
+            dd.appendChild(div);
+        });
+    } else { dd.classList.add('hidden'); }
+}
+
+function openCustomMedModal(m=null) {
+    document.getElementById('m-brand').value = m?m.brand:'';
+    document.getElementById('m-generic').value = m?m.generic:'';
+    document.getElementById('m-strength').value = m?m.strength:'';
+    document.getElementById('m-form').value = m?m.form:'Tablet';
+    document.getElementById('m-morn').value = '১';
+    document.getElementById('m-noon').value = '০';
+    document.getElementById('m-ngt').value = '১';
+    document.getElementById('m-timing').value = 'খাবারের পরে';
+    document.getElementById('m-dur-val').value = '5';
+    document.getElementById('m-dur-type').value = 'দিন';
+    document.getElementById('m-inst').value = '';
+    updDose();
+    document.getElementById('med-search').value = '';
+    document.getElementById('med-dropdown').classList.add('hidden');
+    document.getElementById('med-modal').classList.remove('hidden');
+}
+function closeMedModal() { document.getElementById('med-modal').classList.add('hidden'); }
+function updDose() {
+    document.getElementById('m-custom').value = `${document.getElementById('m-morn').value}+${document.getElementById('m-noon').value}+${document.getElementById('m-ngt').value}`;
+}
+function applyPreset(d, t, dv, dt) {
+    document.getElementById('m-custom').value = d;
+    document.getElementById('m-timing').value = t;
+    document.getElementById('m-dur-val').value = dv;
+    document.getElementById('m-dur-type').value = dt;
+}
+function addMedicine() {
+    const b = document.getElementById('m-brand').value.trim();
+    if(!b) { alert("Enter Brand Name"); return; }
+    rxMeds.push({
+        id: Date.now(), brand: b, generic: document.getElementById('m-generic').value,
+        strength: document.getElementById('m-strength').value, form: document.getElementById('m-form').value,
+        dose: document.getElementById('m-custom').value, timing: document.getElementById('m-timing').value,
+        duration: getBnDuration(document.getElementById('m-dur-val').value, document.getElementById('m-dur-type').value),
+        inst: document.getElementById('m-inst').value
+    });
+    closeMedModal(); renderMeds();
+}
+function removeMed(id) { rxMeds = rxMeds.filter(m=>m.id!==id); renderMeds(); }
+
+function renderMeds() {
+    const list = document.getElementById('med-list');
+    list.innerHTML = '';
+    rxMeds.forEach((m,i)=>{
+        list.innerHTML += `
+        <div class="group border rounded-xl p-4 bg-slate-50 relative">
+            <div class="no-print">
+                <span class="absolute left-3 top-4 font-bold text-slate-400 text-sm">${toBn(i+1)}.</span>
+                <div class="ml-6">
+                    <p class="text-[10px] font-bold text-blue-600 uppercase tracking-widest mb-0.5">${m.generic}</p>
+                    <h4 class="font-bold text-slate-800 text-base">${m.brand} <span class="bg-slate-200 text-slate-600 px-1 rounded text-xs ml-1 font-medium">${m.strength} ${m.form}</span></h4>
+                    <div class="flex gap-3 mt-2">
+                        <span class="bg-blue-100 text-blue-800 font-bold px-2 py-0.5 rounded text-sm">${m.dose}</span>
+                        <span class="text-sm font-medium"><i class="fa-regular fa-clock"></i> ${m.timing}</span>
+                        <span class="text-sm font-medium"><i class="fa-regular fa-calendar"></i> ${m.duration}</span>
+                    </div>
+                    ${m.inst ? `<div class="mt-2 text-xs font-bold text-amber-700 bg-amber-50 px-2 py-1 rounded"><i class="fa-solid fa-circle-info"></i> ${m.inst}</div>` : ''}
+                </div>
+                <button onclick="removeMed(${m.id})" class="absolute right-3 top-3 text-slate-400 hover:text-red-500 hover:bg-red-50 p-2 rounded"><i class="fa-solid fa-trash"></i></button>
+            </div>
+            
+            <div class="med-row-print hidden">
+                <span class="med-index">${toBn(i+1)}.</span>
+                <span><strong>${m.brand}</strong> ${m.strength} ${m.form} &nbsp;—&nbsp;${m.dose} &nbsp;—&nbsp;${m.duration} &nbsp;—&nbsp;${m.timing} ${m.inst? `<span style="font-style:italic;color:#444">(${m.inst})</span>`:''}</span>
+            </div>
+        </div>`;
+    });
+}
+
+// --- TEMPLATES ---
+function renderTemplateSettings() {
+    const tl = document.getElementById('settings-template-list');
+    tl.innerHTML = '';
+    settings.templates.forEach((t,i)=>{
+        tl.innerHTML += `<div class="flex justify-between items-center border-b py-2">
+            <div><span class="font-bold text-indigo-700">${t.name}</span> <span class="text-xs text-slate-500 ml-2">(${t.meds.length} meds)</span></div>
+            <button onclick="deleteTemplate(${i})" class="text-red-500 hover:text-red-700 p-1"><i class="fa-solid fa-trash"></i></button>
+        </div>`;
+    });
+}
+function openSaveTemplateModal() {
+    if(rxMeds.length===0){ alert("Add medicines first!"); return; }
+    document.getElementById('temp-name').value='';
+    document.getElementById('save-temp-modal').classList.remove('hidden');
+}
+function closeSaveTemp() { document.getElementById('save-temp-modal').classList.add('hidden'); }
+function saveTemplate() {
+    const n = document.getElementById('temp-name').value.trim();
+    if(!n)return;
+    if(settings.templates.length>=10) { alert("Max 10 templates allowed. Delete one from settings first."); return; }
+    settings.templates.push({name:n, meds:JSON.parse(JSON.stringify(rxMeds))});
+    localStorage.setItem('rx_templates', JSON.stringify(settings.templates));
+    renderTemplateSettings(); closeSaveTemp(); alert("Template saved");
+}
+
+function openLoadTemplateModal() {
+    const l = document.getElementById('load-temp-list');
+    l.innerHTML = '';
+    if(settings.templates.length===0) l.innerHTML='<p class="text-center text-slate-500 py-4">No templates saved.</p>';
+    settings.templates.forEach((t,i)=>{
+        l.innerHTML += `<div class="border rounded-lg p-3 mb-2 flex justify-between items-center hover:bg-slate-50">
+            <div><div class="font-bold text-indigo-700">${t.name}</div><div class="text-xs text-slate-500">${t.meds.length} medicines</div></div>
+            <button onclick="loadTemplate(${i})" class="bg-indigo-600 text-white px-3 py-1.5 rounded font-bold text-xs hover:bg-indigo-700">Load</button>
+        </div>`;
+    });
+    document.getElementById('load-temp-modal').classList.remove('hidden');
+}
+function closeLoadTemp() { document.getElementById('load-temp-modal').classList.add('hidden'); }
+function loadTemplate(idx) {
+    if(rxMeds.length>0 && !confirm("Replace current medicines?")) return;
+    rxMeds = JSON.parse(JSON.stringify(settings.templates[idx].meds));
+    renderMeds(); closeLoadTemp();
+}
+function deleteTemplate(idx) {
+    if(!confirm("Delete template?"))return;
+    settings.templates.splice(idx,1);
+    localStorage.setItem('rx_templates', JSON.stringify(settings.templates));
+    renderTemplateSettings();
+}
+
+// --- PRINT & CLEAR ---
+function clearPrescription() {
+    if(!confirm("Clear everything?"))return;
+    document.getElementById('input-symptoms').value='';
+    document.getElementById('input-diagnosis').value='';
+    document.getElementById('input-advice').value='';
+    invGroups=[]; rxMeds=[]; renderInv(); renderMeds();
+}
+
+function syncPrintData() {
+    // Patient Info
+    document.getElementById('pr-name').textContent = document.getElementById('pt-name').value;
+    document.getElementById('pr-age').textContent = document.getElementById('pt-age').value;
+    document.getElementById('pr-sex').textContent = document.getElementById('pt-sex').value;
+    const dStr = document.getElementById('pt-date').value;
+    document.getElementById('pr-date').textContent = dStr ? new Date(dStr).toLocaleDateString('en-GB') : '';
+
+    // Clinical
+    document.getElementById('print-symptoms').textContent = document.getElementById('input-symptoms').value;
+    document.getElementById('print-symptoms').style.display = document.getElementById('input-symptoms').value ? 'block' : 'none';
+    document.getElementById('print-symptoms').previousElementSibling.style.display = document.getElementById('input-symptoms').value ? 'block' : 'none';
+    
+    document.getElementById('print-diagnosis').textContent = document.getElementById('input-diagnosis').value;
+    document.getElementById('print-diagnosis').style.display = document.getElementById('input-diagnosis').value ? 'block' : 'none';
+    document.getElementById('print-diagnosis').previousElementSibling.style.display = document.getElementById('input-diagnosis').value ? 'block' : 'none';
+    
+    document.getElementById('print-advice').textContent = document.getElementById('input-advice').value;
+    document.getElementById('print-advice').style.display = document.getElementById('input-advice').value ? 'block' : 'none';
+    document.getElementById('print-advice').previousElementSibling.style.display = document.getElementById('input-advice').value ? 'block' : 'none';
+
+    // Toggle Investigation title
+    const invTitle = document.getElementById('inv-list').previousElementSibling.previousElementSibling.previousElementSibling;
+    if(invTitle && invTitle.classList.contains('print-section-title')) {
+        invTitle.style.display = invGroups.length ? 'block' : 'none';
+    }
+
+    // Toggle specific elements that might need programmatic block display in print
+    document.querySelectorAll('.inv-print-row').forEach(el=>el.style.display = 'block');
+    document.querySelectorAll('.med-row-print').forEach(el=>el.style.display = 'flex');
+}
+
+function printFull() {
+    syncPrintData();
+    document.getElementById('dynamic-print-style').innerHTML = '@page { margin-top: 8mm; margin-bottom: 8mm; }';
+    document.body.classList.add('print-full');
+    window.print();
+}
+
+function printBody() {
+    syncPrintData();
+    document.getElementById('dynamic-print-style').innerHTML = '@page { margin-top: 3.5in !important; margin-bottom: 1.5in !important; }';
+    document.body.classList.remove('print-full');
+    window.print();
+}
+
+window.addEventListener('afterprint', () => {
+    document.querySelectorAll('.inv-print-row').forEach(el=>el.style.display = '');
+    document.querySelectorAll('.med-row-print').forEach(el=>el.style.display = '');
+});
+
+</script>
+</body>
+</html>
